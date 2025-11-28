@@ -3,23 +3,39 @@
 
 <%- include('includes/head')' %>
 
-<body>
+    <body>
 
-    <%- include('includes/header')' %>
+        <%- include('includes/header')' %>
 
-    <main>
-        <h1><%= post.title %></h1>
+            <main>
+                <h1>
+                    <%= post.title %>
+                </h1>
 
-        <article>
-            <small>posted by <%= post.username %> on <%= new Date(post.createdDate).getMonth() + 1 %>/ <%= new Date(post.createdDate).getDate() %>/ <%= new Date(post.createdDate).getFullYear() %></small>
+                <article>
+                    <small>posted by <%= post.username %> on <%= new Date(post.createdDate).getMonth() + 1 %>/ <%= new
+                                    Date(post.createdDate).getDate() %>/ <%= new Date(post.createdDate).getFullYear() %>
+                                        </small>
 
-            <div>
-                <%= post.body %>
-            </div>
-        </article>
-    </main>
+                    <div>
+                        <%- filterUserHTML(post.body) %>
+                    </div>
+                </article>
 
-    <%- include('includes/footer')' %>
+                <% if(isAuthor) { %>
 
-</body>
+                    <a href="/edit-post/<%= post.id %>" class="button">Edit post</a>
+
+                    <form style="display: inline;" action="/delete-post/<%= post.id %>" method="POST">
+                        <button>Delete Post</button>
+                    </form>
+
+                    <% } %>
+
+            </main>
+
+            <%- include('includes/footer')' %>
+
+    </body>
+
 </html>

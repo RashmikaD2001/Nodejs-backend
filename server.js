@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken')
 const cookieParser = require("cookie-parser")
 
 const sanitizeHTML = require("sanitize-html")
+const marked = require("marked")
 
 const db = require("better-sqlite3")("database.db")
 db.pragma("journal_mode = WAL")
@@ -45,6 +46,15 @@ app.use(cookieParser())
 
 // middleware - run this first
 app.use((req, res, next) => {
+
+    // makrdown function
+    res.locals.filterUserHTML = function(content){
+        return sanitizeHTML(marked.parse(content), {
+            allowedTags: ["p", "br", "ul", "ol", "li", "strong", "bold", "i", "em", "h1", "h2", "h3", "h4", "h5", "h6"],
+            allowedAttributes: {} 
+        })
+    }
+
     res.locals.errors=[]
 
     // validating incoming jwt token
@@ -66,7 +76,11 @@ app.use((req, res, next) => {
 app.get("/", (req, res) => {
 
     if(req.user){
-        return res.render("dashboard")
+        const postStatement = db.prepare(
+            "SELECT * FROM posts WHERE authorid = ? ORDER BY createdDate DESC" 
+        )
+        const posts = postStatement.all(req.user.userid)
+        return res.render("dashboard", {posts})
     }
 
     res.render("homepage")
@@ -226,6 +240,64 @@ function sharedPostValidation(req){
     return errors
 }
 
+app.post("edit-post/:id", (req, res) => {
+    
+    // try to look up post
+    const statement = db.prepare(
+        "SELECT * FROM posts WHERE id = ?"
+    )
+    const post = statement.get(req.params.id)
+
+    if(!post){
+       return res.render("404") 
+    }
+
+    // if wrong author , redirect to homepage
+    if(post.authorid !== req.users.userid){
+        return res.redirect("/")
+    }
+
+    const erros = sharedPostValidation(req)
+
+    if(errors.length){
+        req.render("edit-post", {errors})
+    }
+
+    const updateStatement = db.prepare(
+        "UPDATE posts SET title = ?, body = ? WHERE id = ?"
+    )
+
+    updateStatement.run(
+        req.body.title,
+        req.body.body,
+        req.params.id
+    )
+
+    res.redirect(`/post/${req.params.id}`)
+})
+
+app.get("/edit-post/:id", mustBeLoggedIn, (req, res) => {
+    
+    // try to look up post
+    const statement = db.prepare(
+        "SELECT * FROM posts WHERE id = ?"
+    )
+    const post = statement.get(req.params.id)
+
+    if(!post){
+       return res.render("404") 
+    }
+
+    // if wrong author , redirect to homepage
+    if(post.authorid !== req.users.userid){
+        return res.redirect("/")
+    }
+
+
+    //render edit-post template
+    res.render("edit-post", { post })
+})
+
 // :id dynamic parameter 
 app.get("post/:id", (req, res) => {
     const statement = db.prepare(
@@ -237,7 +309,9 @@ app.get("post/:id", (req, res) => {
        return res.render("404") 
     }
 
-    res.render("single-post", {post})
+    const isAuthor = post.authorid === req.user.userid
+
+    res.render("single-post", { post, isAuthor })
 })
 
 app.post("/create-post", mustBeLoggedIn, (req, res) => {
@@ -260,6 +334,29 @@ app.post("/create-post", mustBeLoggedIn, (req, res) => {
     const newPost = getPostStatement.get(result.lastInsertRowid)
 
     res.redirect(`/post/${newPost.id}`)
+})
+
+app.post("delete-post/:id", mustBeLoggedIn, (req, res) => {
+
+    const statement = db.prepare(
+        "SELECT * FROM posts WHERE id = ?"
+    )
+    
+    const post = statement.get(req.params.id)
+
+    if(!post){
+        return res.redirect("/")
+    }
+
+    if(post.authorid != req.user.userid){
+        return res.redirect("/")
+    }
+
+    const deleteStatement = db.prepare("DELETE FROM posts WHERE id = ?")
+    deleteStatement.run(req.params.id)
+
+    res.redirect("/")
+
 })
 
 app.listen(3000)

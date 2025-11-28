@@ -9,8 +9,20 @@
 
 
     <main>
-        <h2>Welcome to your dashboard</h2>
-        <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam reprehenderit aliquam ipsam ab repellendus at eveniet odio laborum aperiam, vitae itaque consectetur molestiae, commodi beatae magni natus, eaque ut distinctio.</p>
+        <h2>Hello <%= user.username %></h2>
+
+        <% if(posts.length == 0) { %>
+            <h4>You don't have any post yet</h4>
+        <% } %>
+
+        <ul>
+            <% posts.forEach(post => {%>
+                <li>
+                    <a href="/post/<% post.id %>"><%= post.title %></a> 
+                    on <%= new Date(post.createdDate).getMonth() + 1 %>/ <%= new Date(post.createdDate).getDate() %>/ <%= new Date(post.createdDate).getFullYear() %>
+                </li>
+            <% }) %>
+        </ul>
     </main>
 
     <%- include('includes/footer')' %>
